@@ -1,3 +1,4 @@
+global using System.Text.Json;
 using SafeUninstall;
 int checks = 0;
 void Check(bool condition, string message) { checks++; if (!condition) throw new Exception(message); }
@@ -5,6 +6,14 @@ Check(CsvReport.Cell("=1+1") == "\"'=1+1\"", "Formula escaping");
 Check(CsvReport.Cell("  @SUM(A1)") == "\"'  @SUM(A1)\"", "Whitespace formula escaping");
 Check(CsvReport.Cell("a,\"b") == "\"a,\"\"b\"", "CSV quote escaping");
 Check(CsvReport.Cell("\tvalue") == "\"'\tvalue\"", "Tab escaping");
+Check(UpdateService.ParseVersion("v1.2.0") == new Version(1, 2, 0), "Release tag parsing");
+Check(UpdateService.ParseVersion("1.2.0.0") == new Version(1, 2, 0), "Assembly version normalization");
+Check(UpdateService.ParseVersion("v1.2.0-beta") == null, "Prerelease tag rejected");
+var hash = new string('a', 64);
+Check(UpdateService.ChecksumMatches(hash + "  SafeUninstall-win-x64.zip\r\n", hash.ToUpperInvariant()), "Checksum manifest match");
+Check(!UpdateService.ChecksumMatches(hash + "  other.zip", hash), "Wrong asset checksum rejected");
+Check(!UpdateService.ChecksumMatches(hash + "  SafeUninstall-win-x64.zip", new string('b', 64)), "Corrupt update rejected");
+Check(!UpdateService.ChecksumMatches(hash + "  SafeUninstall-win-x64.zip\n" + hash + "  SafeUninstall-win-x64.zip", hash), "Ambiguous checksums rejected");
 var root = Path.Combine(Path.GetTempPath(), "SafeUninstallRegression_" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try

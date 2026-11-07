@@ -58,6 +58,7 @@ sealed class MainForm : Form
         tabs.TabPages.Add(BuildLeftovers());
         tabs.TabPages.Add(BuildJunk());
         tabs.TabPages.Add(BuildFiles());
+        tabs.TabPages.Add(BuildUpdates());
 
         var status = new StatusStrip();
         status.Items.Add(_status);
@@ -99,6 +100,42 @@ sealed class MainForm : Form
             await LoadApps(ct);
             await LoadJunk(ct);
         });
+    }
+
+    TabPage BuildUpdates()
+    {
+        var page = Page("Updates");
+        var bar = Ui.Toolbar();
+        var check = ActionButton(Ui.Primary("Check for updates"), bar);
+        var detail = Ui.DetailBox();
+        detail.Dock = DockStyle.Fill;
+        detail.Text = $"Installed version: {UpdateService.CurrentVersion.ToString(3)}\r\n\r\nChecks stable GitHub Releases when you click Check for updates. Downloads are verified against the release SHA-256 checksum.\r\n\r\nA new version is extracted to your local app-data folder. Your current copy stays available. After updating, use the new copy; existing shortcuts still point to the old one.";
+        check.Click += async (_, _) => await RunBusy(async ct =>
+        {
+            var update = await UpdateService.CheckAsync(ct);
+            if (update == null)
+            {
+                detail.Text = $"Installed version: {UpdateService.CurrentVersion.ToString(3)}\r\nNo newer stable release is published.";
+                return;
+            }
+            detail.Text = $"Version {update.Version} is available.\r\n\r\n{update.Notes}";
+            if (MessageBox.Show(this, $"Download version {update.Version} from Zyvelia/UninstallApp?", "Update available",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
+                return;
+            var progress = new Progress<string>(message => SetStatus(message));
+            var exe = await UpdateService.DownloadAsync(update, progress, ct);
+            detail.Text += "\r\n\r\nDownloaded to: " + exe;
+            if (MessageBox.Show(this, "The update is ready. Open the new version and close this copy?", "Update ready",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+            {
+                Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(exe)! });
+                // Defer closing until RunBusy has released its cancellation state.
+                BeginInvoke(new Action(Close));
+            }
+        });
+        page.Controls.Add(detail);
+        page.Controls.Add(bar);
+        return page;
     }
 
     Panel BuildHeader()

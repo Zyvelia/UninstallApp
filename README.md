@@ -34,3 +34,11 @@ The existing Windows-only diagnostic is available via `SafeUninstall.exe --self-
 ## Behavior and limits
 
 Cleanup permanently deletes selected files; it is not an undo system. Leftover name matches require human review and do not establish that files are unused. Directory checks reduce link traversal risk but do not provide handle-based protection against an adversarial process swapping directories between checks. Close affected apps before cleaning caches. See [ROADMAP.md](ROADMAP.md) for the next improvements.
+
+## Updates (version 1.2)
+
+Open the **Updates** tab and click **Check for updates**. The app checks the latest stable release of this repository, shows release notes, asks before downloading, verifies the ZIP against the published SHA-256 checksum, and offers to open the new version. Downloads support the existing Cancel button. No checks run automatically at startup.
+
+Updates are extracted into a unique version folder under `%LOCALAPPDATA%/SafeUninstall/Updates`. The old copy is retained; existing shortcuts must be pointed at the new executable. This approach also works when the original folder is not writable. Downloaded updates are not automatically run until you confirm. Checksums detect corruption; they are not code signatures or protection against a compromised release account.
+
+To publish future updates, change `<Version>` in `SafeUninstall.csproj`, commit and push, then push a matching version tag, for example `v1.3.0`. The **Publish update** workflow creates a self-contained x64 ZIP and checksum in GitHub Releases. The updater requires those exact release assets. An older build without the Updates tab needs a one-time manual download of version 1.2 or later from Releases.
